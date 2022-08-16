@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "TodoList": {
+      "commandName": "Project"
+    },
+    "add": {
+      "commandName": "Project",
+      "commandLineArgs": "add test_title test_content"
+    },
+    "list": {
+      "commandName": "Project",
+      "commandLineArgs": "list"
+    }
+  }
+}
