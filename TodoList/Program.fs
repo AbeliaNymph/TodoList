@@ -38,14 +38,18 @@ let load_item_list_from_file _ =
 
     let lines = input.Trim().Split("\r\n")
     
+    
 
     lines
+    |> Seq.filter (fun line -> line.Length > 0)
     |> Seq.map (fun line -> line.Trim())
     |> Seq.map Item.from_csv_str
     |> Seq.toList
     |> Ok
 
-    
+let save csv_str_lines =
+    System.IO.File.WriteAllLines("todo_list.txt", csv_str_lines)
+    Ok "保存成功"
 
 let to_list array = 
     if Array.isEmpty array then
@@ -89,7 +93,7 @@ let list _ =
         load_item_list_from_file()
         |> Result.defaultValue List.empty
         |> Seq.map Item.display
-        |> Seq.reduce (fun a b -> a + "\r\n" + b)
+        |> Seq.fold (fun acc item_display -> acc + item_display + "\r\n") String.Empty
 
     match String.length str_seq with
     | 0 -> Error "暂无待办事项"
@@ -98,9 +102,53 @@ let list _ =
     
 let validate_done list = 
     match List.length list with
-    | 1 ->
+    | 1 -> list.[0] |> Ok
     | _ -> Tips.unexpect_param_amount 1 (List.length list) |> Error
 
+let done_todo id_result = 
+    
+    match id_result with
+    |Ok id -> 
+
+        let item_list = 
+            load_item_list_from_file()
+            |> Result.defaultValue List.Empty
+
+        let old_item = item_list |> Seq.tryFind (fun item -> item.id = id)
+
+        
+        match old_item with
+        | Some item -> 
+            let new_item_list =
+                {item with is_done = true}
+                ::
+                (item_list
+                |> Seq.filter (fun item -> item.id <> id)
+                |> Seq.toList)
+
+            new_item_list
+            |> Seq.toList
+            |> Seq.map (fun item -> item.to_csv_string())
+            |> Seq.toArray
+            |> save
+        | None -> $"不能完成id为{id}的待办事项，因为该id指定的待办事项不存在。" |> Error
+    | Error e -> Error e
+
+let validate_remove list = 
+    match List.length list with
+    | 1 -> Ok list.[0]
+    | _ -> Tips.unexpect_param_amount 1 (List.length list) |> Error
+    
+let remove id_result = 
+    match id_result with
+    | Ok id ->
+        load_item_list_from_file()
+        |> Result.defaultValue List.Empty
+        |> List.filter (fun item -> item.id <> id)
+        |> Seq.map (fun item -> item.to_csv_string())
+        |> Seq.toArray
+        |> save
+    | Error e -> Error e
 
 [<EntryPoint>]
 let main argv = 
@@ -116,10 +164,11 @@ let main argv =
                 validate_list tail |> ignore 
                 list ()
             | "done" -> validate_done tail |> done_todo
-            | "rm" -> failwith (Tips.unimplement_method head)
+            | "rm" -> validate_remove tail |> remove
             | _ ->  Tips.unknow_command head |> Error
 
     match result with
     | Ok t -> printfn "%s" t
     | Error e -> eprintfn "%s" e
+
     0

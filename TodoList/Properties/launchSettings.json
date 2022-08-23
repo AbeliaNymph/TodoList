@@ -10,6 +10,14 @@
     "list": {
       "commandName": "Project",
       "commandLineArgs": "list"
+    },
+    "rm": {
+      "commandName": "Project",
+      "commandLineArgs": "rm 6aPwlEEl2We65lPrFy36u"
+    },
+    "done": {
+      "commandName": "Project",
+      "commandLineArgs": "done CEr05OgyhDqlBxGOXBKgq"
     }
   }
 }
