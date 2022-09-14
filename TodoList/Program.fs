@@ -1,45 +1,10 @@
 ﻿open System
 
-type Item = 
-    {
-        id: string
-        title: string
-        content: string
-        is_done: bool
-    }
-
-    member this.to_csv_string() =
-        $"{this.id},{this.title},{this.content},{this.is_done}\r\n"
-
-module Item =
-    let create id title content is_done = 
-        {
-            id = id
-            title= title
-            content = content
-            is_done = is_done
-        }
-
-    let default_add title content = create (Nanoid.Nanoid.Generate()) title content false
-
-    let from_csv_str (str: string) = 
-        let csv = str.Split ","
-        
-        create csv.[0] csv.[1] csv.[2] (Boolean.Parse csv.[3])
-
-    let display item =
-        if item.is_done then
-            $"[x] {item.id} {item.title} {item.content}"
-        else
-            $"[ ] {item.id} {item.title} {item.content}"
 
 let load_item_list_from_file _ = 
     let input = System.IO.File.ReadAllText "todo_list.txt"
 
     let lines = input.Trim().Split("\r\n")
-    
-    
-
     lines
     |> Seq.filter (fun line -> line.Length > 0)
     |> Seq.map (fun line -> line.Trim())
@@ -49,7 +14,7 @@ let load_item_list_from_file _ =
 
 let save csv_str_lines =
     System.IO.File.WriteAllLines("todo_list.txt", csv_str_lines)
-    Ok "保存成功"
+    Ok Tips.save_success
 
 let to_list array = 
     if Array.isEmpty array then
@@ -68,13 +33,13 @@ let add item_result =
 
     let save path string_array = 
         System.IO.File.WriteAllLines(path, string_array)
-        Ok "保存成功"
+        Ok Tips.save_success
 
     match item_result with
     | Error e -> Error e
-    | Ok (item:Item) -> 
+    | Ok item -> 
         let old_csv_list = csv_lines |> List.ofArray
-        let new_csv_list = item.to_csv_string() :: old_csv_list
+        let new_csv_list = (item |> Item.to_csv_string) :: old_csv_list
         
         new_csv_list
         |> Array.ofList
@@ -128,10 +93,10 @@ let done_todo id_result =
 
             new_item_list
             |> Seq.toList
-            |> Seq.map (fun item -> item.to_csv_string())
+            |> Seq.map Item.to_csv_string
             |> Seq.toArray
             |> save
-        | None -> $"不能完成id为{id}的待办事项，因为该id指定的待办事项不存在。" |> Error
+        | None -> id |> Tips.can_not_finish_not_exist_item |> Error
     | Error e -> Error e
 
 let validate_remove list = 
@@ -142,12 +107,22 @@ let validate_remove list =
 let remove id_result = 
     match id_result with
     | Ok id ->
-        load_item_list_from_file()
-        |> Result.defaultValue List.Empty
-        |> List.filter (fun item -> item.id <> id)
-        |> Seq.map (fun item -> item.to_csv_string())
-        |> Seq.toArray
-        |> save
+        match Item.load() with
+        | Ok item_list ->
+            let exist_id = 
+                item_list
+                |> List.tryFindIndex (fun item -> item.id = id)
+
+            match exist_id with
+            | Some id -> 
+                item_list
+                |> List.removeAt id
+                |> List.map Item.to_csv_string
+                |> Array.ofList
+                |> save
+            | None -> id |> Tips.can_not_delete_not_exist_item |> Error
+            
+        | Error e -> Error e
     | Error e -> Error e
 
 [<EntryPoint>]
@@ -168,7 +143,8 @@ let main argv =
             | _ ->  Tips.unknow_command head |> Error
 
     match result with
-    | Ok t -> printfn "%s" t
-    | Error e -> eprintfn "%s" e
+    | Ok t -> printfn "\x1B[32;40m%s\x1B[0m" t
+    | Error e -> eprintfn "\x1B[31;40m%s\x1B[0m" e
 
     0
+
