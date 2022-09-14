@@ -14,7 +14,7 @@ let load_item_list_from_file _ =
 
 let save csv_str_lines =
     System.IO.File.WriteAllLines("todo_list.txt", csv_str_lines)
-    Ok "保存成功"
+    Ok Tips.save_success
 
 let to_list array = 
     if Array.isEmpty array then
@@ -33,7 +33,7 @@ let add item_result =
 
     let save path string_array = 
         System.IO.File.WriteAllLines(path, string_array)
-        Ok "保存成功"
+        Ok Tips.save_success
 
     match item_result with
     | Error e -> Error e
@@ -96,7 +96,7 @@ let done_todo id_result =
             |> Seq.map Item.to_csv_string
             |> Seq.toArray
             |> save
-        | None -> $"不能完成id为[{id}]的待办事项，因为该id指定的待办事项不存在。" |> Error
+        | None -> id |> Tips.can_not_finish_not_exist_item |> Error
     | Error e -> Error e
 
 let validate_remove list = 
@@ -120,7 +120,7 @@ let remove id_result =
                 |> List.map Item.to_csv_string
                 |> Array.ofList
                 |> save
-            | None -> $"不能删除id为{id}的待办事项，因为该id指定的待办事项不存在。" |> Error
+            | None -> id |> Tips.can_not_delete_not_exist_item |> Error
             
         | Error e -> Error e
     | Error e -> Error e
@@ -143,7 +143,7 @@ let main argv =
             | _ ->  Tips.unknow_command head |> Error
 
     match result with
-    | Ok t -> printfn "%s" t
+    | Ok t -> printfn "\x1B[32;40m%s\x1B[0m" t
     | Error e -> eprintfn "\x1B[31;40m%s\x1B[0m" e
 
     0
